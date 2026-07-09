@@ -1,0 +1,120 @@
+/** All message roles that can appear in the chat panel. */
+export type MessageRole = 'user' | 'agent' | 'tool' | 'error' | 'confirm' | 'diagnostic';
+
+/**
+ * Confirmation mode for tool calls:
+ * - review  — ask before every tool call
+ * - guard   — ask only before destructive operations (default)
+ * - off     — never ask, run everything automatically
+ */
+export type ConfirmMode = 'review' | 'guard' | 'off';
+
+/** A single message in the chat history. */
+export interface ChatMessage {
+  id: string;
+  role: MessageRole;
+  /** Text content; may grow incrementally during streaming. */
+  content: string;
+  /** Tool name, set for role === 'tool'. */
+  toolName?: string;
+  /** Tool args, set for role === 'tool'. */
+  toolArgs?: unknown;
+  /** Tool call ID, set for role === 'confirm'. */
+  toolCallId?: string;
+  /** Set when the user resolves a confirm prompt (continue checkpoint decline only). */
+  confirmOutcome?: 'declined';
+  /** Whether this message is still being streamed. */
+  streaming?: boolean;
+  /** Whether a tool message is collapsed to a one-liner. */
+  folded?: boolean;
+  /** When true the message is omitted from the chat list (e.g. hidden tool calls). */
+  hidden?: boolean;
+}
+
+/** A single selectable Claude model. */
+export interface ModelEntry {
+  id: string;
+  label: string;
+}
+
+/** Active project identity from the backend. */
+export interface ProjectState {
+  name: string | null;
+  slug: string | null;
+}
+
+/** Metadata for a saved conversation session. */
+export interface SessionMeta {
+  id: string;
+  startedAt: string;
+  name?: string;
+  preview?: string;
+}
+
+/** Layered instructions and memories (global + per-project). */
+export interface ContextState {
+  globalInstructions: string;
+  projectInstructions: string;
+  globalMemories: string;
+  projectMemories: string;
+}
+
+/** Settings payload received from the backend. */
+export interface SettingsPayload {
+  type: 'settings';
+  /** Whether an Anthropic API key is currently stored. */
+  hasKey: boolean;
+  lastModel?: string;
+}
+
+// ── WebSocket message types (server → client) ──────────────────────────────
+
+export type ServerMessage =
+  | { type: 'ready' }
+  | { type: 'stream_start' }
+  | { type: 'stream_chunk'; text: string }
+  | { type: 'stream_end' }
+  | { type: 'tool_start'; name: string; args: unknown }
+  | { type: 'tool_result'; name: string; result: unknown }
+  | { type: 'confirm_request'; toolCallId: string; toolName: string; args: unknown }
+  | { type: 'error'; message: string }
+  | { type: 'history_cleared' }
+  | SettingsPayload
+  | { type: 'settings_saved' }
+  | { type: 'key_cleared' }
+  | { type: 'history'; messages: Array<{ role: 'user' | 'agent'; content: string }> }
+  | { type: 'project'; name: string | null; slug: string | null }
+  | {
+      type: 'context';
+      globalInstructions: string;
+      projectInstructions: string;
+      globalMemories: string;
+      projectMemories: string;
+    }
+  | { type: 'context_saved' }
+  | { type: 'project_stale'; summary: string }
+  | { type: 'sessions'; sessions: SessionMeta[] }
+  | { type: 'session_loaded'; session: SessionMeta }
+  | { type: 'session_named'; id: string; name: string };
+
+// ── WebSocket message types (client → server) ──────────────────────────────
+
+export type ClientMessage =
+  | { type: 'chat'; text: string; model: string }
+  | { type: 'clear_history' }
+  | { type: 'get_settings' }
+  | { type: 'save_settings'; apiKey: string }
+  | { type: 'set_active_model'; model: string }
+  | { type: 'clear_key' }
+  | { type: 'open_url'; url: string }
+  | { type: 'console_log'; level: string; message: string }
+  | { type: 'debug'; model: string }
+  | { type: 'set_confirm_mode'; mode: ConfirmMode }
+  | { type: 'confirm_response'; confirmed: boolean; toolCallId: string }
+  | { type: 'get_sessions' }
+  | { type: 'load_session'; id: string }
+  | { type: 'name_session'; name: string }
+  | { type: 'get_context' }
+  | { type: 'save_instructions'; scope: 'global' | 'project'; content: string }
+  | { type: 'save_memories'; scope: 'global' | 'project'; content: string }
+  | { type: 'refresh_project_memories'; model: string };

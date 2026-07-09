@@ -1,0 +1,8 @@
+{
+  "name": "LiveAssist",
+  "author": "praveensharma",
+  "version": "0.1.0",
+  "description": "Claude-powered chat assistant embedded in Ableton Live. Describe what you want in plain English and Claude drives the session via the Extensions SDK.",
+  "entry": "dist/extension.js",
+  "minimumApiVersion": "1.0.0"
+}

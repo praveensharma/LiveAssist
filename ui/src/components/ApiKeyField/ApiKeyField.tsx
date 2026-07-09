@@ -1,0 +1,53 @@
+import { useRef } from 'react';
+
+interface ApiKeyFieldProps {
+  label: string;
+  placeholder: string;
+  /** Whether a key is currently stored. */
+  isSet: boolean;
+  onClear: () => void;
+}
+
+/** A single API key row: status dot, label, password input, clear button. */
+export function ApiKeyField({ label, placeholder, isSet, onClear }: ApiKeyFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleClear() {
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+    onClear();
+  }
+
+  return (
+    <div className="mb-3 flex items-center gap-2.5">
+      <div
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${isSet ? 'bg-[#6abf6a]' : 'bg-border'}`}
+      />
+      <label className="flex-1 text-[13px]" htmlFor="key-anthropic">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        id="key-anthropic"
+        className="flex-[2] rounded-default border border-border bg-surface2 px-2.5 py-2 text-[13px] text-text outline-none focus:outline focus:outline-1 focus:outline-accent"
+        type="password"
+        placeholder={isSet ? '••••••••' : placeholder}
+        autoComplete="off"
+      />
+      <button
+        className="shrink-0 cursor-pointer rounded-default border border-border px-2 py-1 text-[12px] text-text-dim hover:border-[#e05555] hover:text-[#e05555]"
+        onClick={handleClear}
+        title="Clear key"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+/** Returns the current value from the Anthropic key input. */
+export function getKeyInputValue(): string {
+  const el = document.getElementById('key-anthropic') as HTMLInputElement | null;
+  return el?.value ?? '';
+}
