@@ -17,11 +17,16 @@
  * fetch) fills in the Fetch API globals, since this host doesn't provide
  * them itself.
  */
+import { dbg } from './debug-log.js';
+
 export function installNodePolyfills(): void {
+  dbg('[LiveAssist] polyfill: start');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { URL, URLSearchParams } = require('url') as typeof import('url');
+  dbg('[LiveAssist] polyfill: url required');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { TextEncoder, TextDecoder } = require('util') as typeof import('util');
+  dbg('[LiveAssist] polyfill: util required');
   const g = globalThis as unknown as {
     URL?: unknown;
     URLSearchParams?: unknown;
@@ -46,6 +51,7 @@ export function installNodePolyfills(): void {
   if (typeof g.TextDecoder === 'undefined') {
     g.TextDecoder = TextDecoder;
   }
+  dbg('[LiveAssist] polyfill: base globals set');
 
   if (
     typeof g.fetch === 'undefined' ||
@@ -54,12 +60,15 @@ export function installNodePolyfills(): void {
     typeof g.Response === 'undefined' ||
     typeof g.FormData === 'undefined'
   ) {
+    dbg('[LiveAssist] polyfill: requiring undici');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const undici = require('undici') as typeof import('undici');
+    dbg('[LiveAssist] polyfill: undici required');
     if (typeof g.fetch === 'undefined') g.fetch = undici.fetch;
     if (typeof g.Headers === 'undefined') g.Headers = undici.Headers;
     if (typeof g.Request === 'undefined') g.Request = undici.Request;
     if (typeof g.Response === 'undefined') g.Response = undici.Response;
     if (typeof g.FormData === 'undefined') g.FormData = undici.FormData;
   }
+  dbg('[LiveAssist] polyfill: done');
 }

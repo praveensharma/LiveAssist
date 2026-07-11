@@ -24,24 +24,13 @@ import { createProvider, type ProviderMessage } from './providers/index.js';
 import { DESTRUCTIVE_TOOLS } from './agent/safety.js';
 import { pruneHistoryForProvider } from './history-prune.js';
 import { stringifyJson, toJsonSafe } from './json.js';
+import { dbg } from './debug-log.js';
 
 const ALL_TOOL_SCHEMAS = [...CUSTOM_TOOL_SCHEMAS, ...GENERATED_TOOL_SCHEMAS];
 
 type ConfirmMode = 'review' | 'guard' | 'off';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const LOG_FILE = '/tmp/liveassist-debug.log';
-
-function dbg(...args: unknown[]): void {
-  const line = `[${new Date().toISOString()}] ${args.map(String).join(' ')}\n`;
-  try {
-    fs.appendFileSync(LOG_FILE, line);
-  } catch {
-    // intentionally swallow — log writes are best-effort
-  }
-  console.log(...args);
-}
 
 export interface LiveAssistServer {
   port: number;
@@ -133,10 +122,11 @@ export async function startServer(
     ws.on('close', () => console.log('[LiveAssist] UI disconnected'));
   });
 
+  dbg('[LiveAssist] http server: calling listen()');
   await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
   const address = httpServer.address() as { port: number };
 
-  console.log(`[LiveAssist] Server listening on http://127.0.0.1:${address.port}`);
+  dbg(`[LiveAssist] Server listening on http://127.0.0.1:${address.port}`);
 
   return {
     port: address.port,

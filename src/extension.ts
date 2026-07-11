@@ -3,6 +3,7 @@ import { Storage } from './storage.js';
 import { startServer, type LiveAssistServer } from './server.js';
 import { createModalGuard } from './modal-guard.js';
 import { installNodePolyfills } from './node-polyfills.js';
+import { dbg } from './debug-log.js';
 
 /**
  * Modal dialog dimensions (width × height in pixels).
@@ -25,11 +26,15 @@ const CONTEXT_MENU_SCOPES = [
 const registeredMenuScopes = new Set<string>();
 
 export const activate = (activation: ActivationContext): void => {
+  dbg('[LiveAssist] activate() entered');
+
   // Deferred until the host has actually invoked us — avoid any work during
   // the host's own bring-up/handshake.
   installNodePolyfills();
+  dbg('[LiveAssist] polyfills installed');
 
   const context = initialize(activation, '1.0.0');
+  dbg('[LiveAssist] SDK context initialized');
   const modalGuard = createModalGuard();
 
   console.log('[LiveAssist] Extension activated');
@@ -38,10 +43,12 @@ export const activate = (activation: ActivationContext): void => {
 
   const serverReady: Promise<void> = (async () => {
     try {
+      dbg('[LiveAssist] server startup: begin');
       const storageDir = context.environment.storageDirectory ?? '.';
       const storage = new Storage(storageDir);
 
       server = await startServer(() => context.application.song, storage, context.resources);
+      dbg(`[LiveAssist] server startup: listening on port ${server.port}`);
 
       for (const scope of CONTEXT_MENU_SCOPES) {
         if (registeredMenuScopes.has(scope)) {
@@ -83,4 +90,5 @@ export const activate = (activation: ActivationContext): void => {
   // After hot reload the first context-menu click may arrive while the server
   // is still starting; openDialog waits on serverReady instead of no-op'ing.
   context.commands.registerCommand('liveassist.open', openDialog);
+  dbg('[LiveAssist] activate() returning');
 };
