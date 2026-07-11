@@ -1,3 +1,4 @@
+import './node-polyfills.js';
 import { initialize, type ActivationContext } from '@ableton-extensions/sdk';
 import { Storage } from './storage.js';
 import { startServer, type LiveAssistServer } from './server.js';

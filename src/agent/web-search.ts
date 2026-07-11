@@ -1,5 +1,4 @@
 import https from 'node:https';
-import { URL } from 'node:url';
 
 /** Descriptive User-Agent for Wikipedia and tab sites. */
 const HTTP_USER_AGENT =
