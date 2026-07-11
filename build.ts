@@ -20,8 +20,11 @@ await esbuild.build({
   logLevel: 'info',
   minify: production,
   sourcemap: !production,
-  // Externalize the SDK — provided by the Extension Host at runtime
-  external: ['@ableton-extensions/sdk'],
+  // Externalize the SDK — provided by the Extension Host at runtime.
+  // Externalize undici too — it's only needed lazily inside installNodePolyfills(),
+  // and inlining its ~1MB source nearly quadrupled the bundle. Left as a real
+  // require('undici') resolved from node_modules at runtime instead.
+  external: ['@ableton-extensions/sdk', 'undici'],
   // esbuild outputs CJS so import.meta.url is unavailable; inject a
   // synthetic value so fileURLToPath() resolves __dirname correctly.
   define: {
