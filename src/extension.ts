@@ -1,8 +1,8 @@
-import './node-polyfills.js';
 import { initialize, type ActivationContext } from '@ableton-extensions/sdk';
 import { Storage } from './storage.js';
 import { startServer, type LiveAssistServer } from './server.js';
 import { createModalGuard } from './modal-guard.js';
+import { installNodePolyfills } from './node-polyfills.js';
 
 /**
  * Modal dialog dimensions (width × height in pixels).
@@ -25,6 +25,10 @@ const CONTEXT_MENU_SCOPES = [
 const registeredMenuScopes = new Set<string>();
 
 export const activate = (activation: ActivationContext): void => {
+  // Deferred until the host has actually invoked us — avoid any work during
+  // the host's own bring-up/handshake.
+  installNodePolyfills();
+
   const context = initialize(activation, '1.0.0');
   const modalGuard = createModalGuard();
 
@@ -33,26 +37,30 @@ export const activate = (activation: ActivationContext): void => {
   let server: LiveAssistServer | undefined;
 
   const serverReady: Promise<void> = (async () => {
-    const storageDir = context.environment.storageDirectory ?? '.';
-    const storage = new Storage(storageDir);
+    try {
+      const storageDir = context.environment.storageDirectory ?? '.';
+      const storage = new Storage(storageDir);
 
-    server = await startServer(() => context.application.song, storage, context.resources);
+      server = await startServer(() => context.application.song, storage, context.resources);
 
-    for (const scope of CONTEXT_MENU_SCOPES) {
-      if (registeredMenuScopes.has(scope)) {
-        continue;
+      for (const scope of CONTEXT_MENU_SCOPES) {
+        if (registeredMenuScopes.has(scope)) {
+          continue;
+        }
+        registeredMenuScopes.add(scope);
+        context.ui
+          .registerContextMenuAction(scope, 'Ask LiveAssist…', 'liveassist.open')
+          .then(() => console.log(`[LiveAssist] Context menu registered for ${scope}`))
+          .catch((err: unknown) => {
+            registeredMenuScopes.delete(scope);
+            console.error(`[LiveAssist] Failed to register ${scope}:`, err);
+          });
       }
-      registeredMenuScopes.add(scope);
-      context.ui
-        .registerContextMenuAction(scope, 'Ask LiveAssist…', 'liveassist.open')
-        .then(() => console.log(`[LiveAssist] Context menu registered for ${scope}`))
-        .catch((err: unknown) => {
-          registeredMenuScopes.delete(scope);
-          console.error(`[LiveAssist] Failed to register ${scope}:`, err);
-        });
-    }
 
-    console.log(`[LiveAssist] Ready — ${context.application.song.tracks.length} tracks loaded`);
+      console.log(`[LiveAssist] Ready — ${context.application.song.tracks.length} tracks loaded`);
+    } catch (err) {
+      console.error('[LiveAssist] Fatal error during activation:', err);
+    }
   })();
 
   const openDialog = (): void => {
