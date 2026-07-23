@@ -294,6 +294,7 @@ ${mainStr}
 - Long tasks pause every ~5 steps for user approval (Review/Guard modes only; Auto skips step prompts) — keep going efficiently within each batch.
 - Inserting into a rack: use \`rack_device_insert_chain\` to add a chain, then \`chain_insert_device\` to add devices inside it.
 - **Before claiming a task is done:** call \`get_live_state\` and verify session clips (Clip[0]…), notes, tempo, and audible devices match the request. Never claim success if only arrangement clips exist when session clips were requested, or if Drum Rack/Sampler have no loaded sounds.
+- **Checking stereo phase / mono compatibility:** call \`check_mono_compatibility\` with an AudioTrack id and a short beat range (a few bars, not the whole song — rendering takes real time). It returns a correlation number, not a verdict — only strongly negative correlation (below -0.3) is a reliable red flag; mild negative or low correlation can be intentional wide-stereo content. Present the number and note, don't declare something "broken" on a mild reading. Only works on AudioTrack handles with arrangement audio, not MIDI tracks or session clips.
 
 ## Rules
 - IDs are handle strings — they change if objects are moved. Refresh with \`get_live_state\` when unsure.

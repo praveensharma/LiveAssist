@@ -1,5 +1,6 @@
 import {
   AudioClip,
+  AudioTrack,
   DrumChain,
   MidiClip,
   MidiTrack,
@@ -7,11 +8,24 @@ import {
   Simpler,
   type Song,
 } from '@ableton-extensions/sdk';
+import * as fs from 'node:fs/promises';
 import type { LiveState, DeviceInfo, ClipInfo } from '../agent/chat.js';
 import { webSearch } from '../agent/web-search.js';
+import { analyzeMonoCompatibility } from '../agent/phase-analysis.js';
 import type { AgentContext } from './agent-context.js';
 import { reg, clearRegistry } from './handle-registry.js';
+import { parseHandleArg } from './generated-executor.js';
 import { toJsonSafe } from '../json.js';
+
+function findAudioTrack(song: Song<'1.0.0'>, id: string | number): AudioTrack<'1.0.0'> {
+  const normalized = parseHandleArg(id);
+  const track = song.tracks.find((t) => t.handle.id.toString() === normalized);
+  if (!track) throw new Error(`Track "${normalized}" not found. Call get_live_state to refresh.`);
+  if (!(track instanceof AudioTrack)) {
+    throw new Error(`Track "${normalized}" is not an AudioTrack — mono-compatibility analysis needs audio.`);
+  }
+  return track;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -228,9 +242,36 @@ export async function handleToolCall(
       return { ok: true, importedPath };
     }
 
+    case 'check_mono_compatibility': {
+      if (!ctx.resources) {
+        throw new Error('check_mono_compatibility is unavailable in this context.');
+      }
+      const trackIdArg = args['audio_track_id'];
+      const startTime = args['start_time'];
+      const endTime = args['end_time'];
+      if (typeof trackIdArg !== 'string' && typeof trackIdArg !== 'number') {
+        throw new Error('check_mono_compatibility requires "audio_track_id".');
+      }
+      if (typeof startTime !== 'number' || typeof endTime !== 'number') {
+        throw new Error('check_mono_compatibility requires numeric "start_time" and "end_time".');
+      }
+      if (endTime <= startTime) {
+        throw new Error('"end_time" must be greater than "start_time".');
+      }
+
+      const track = findAudioTrack(song, trackIdArg);
+      const wavPath = await ctx.resources.renderPreFxAudio(track, startTime, endTime);
+      const wavBuffer = await fs.readFile(wavPath);
+      const result = await analyzeMonoCompatibility(wavBuffer);
+      return { ok: true, track: track.name, startTime, endTime, ...result };
+    }
+
     default:
       throw new Error(
-        `Unknown tool: "${name}". Available custom tools: get_live_state, web_search, resources_import_into_project.`,
+        'Unknown tool: "' +
+          name +
+          '". Available custom tools: get_live_state, web_search, resources_import_into_project, ' +
+          'check_mono_compatibility.',
       );
   }
 }

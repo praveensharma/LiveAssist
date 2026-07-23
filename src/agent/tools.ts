@@ -57,4 +57,35 @@ export const CUSTOM_TOOL_SCHEMAS: ToolSchema[] = [
       required: ['file_path'],
     },
   },
+  {
+    name: 'check_mono_compatibility',
+    description:
+      'Analyzes an AudioTrack for stereo phase / mono-compatibility issues over a beat range: renders ' +
+      "the track's pre-effects audio and correlates its left and right channels. Returns a correlation " +
+      'number from -1 to +1 plus a plain-language note — it is not a pass/fail verdict. Strongly negative ' +
+      'correlation (below -0.3) usually means real cancellation when summed to mono (inverted channel, or ' +
+      'timing offset). Mildly negative or low correlation can be intentional wide-stereo content (chorus, ' +
+      'doubled/panned parts, some reverbs) — use judgment before telling the user something is "broken". ' +
+      'Only works on AudioTrack handles (not MIDI tracks) and only on arrangement-view audio (not session ' +
+      'clips directly). Rendering takes real time — pass a short range (a few bars around the area of ' +
+      'concern), not the whole song.',
+    parameters: {
+      type: 'object',
+      properties: {
+        audio_track_id: {
+          type: 'string',
+          description: 'Handle ID of the AudioTrack to analyze.',
+        },
+        start_time: {
+          type: 'number',
+          description: 'Start of the range to render and analyze, in beats.',
+        },
+        end_time: {
+          type: 'number',
+          description: 'End of the range to render and analyze, in beats.',
+        },
+      },
+      required: ['audio_track_id', 'start_time', 'end_time'],
+    },
+  },
 ];

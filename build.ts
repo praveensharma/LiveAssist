@@ -20,11 +20,16 @@ await esbuild.build({
   logLevel: 'info',
   minify: production,
   sourcemap: !production,
-  // Externalize the SDK — provided by the Extension Host at runtime.
-  // Externalize undici too — it's only needed lazily inside installNodePolyfills(),
-  // and inlining its ~1MB source nearly quadrupled the bundle. Left as a real
-  // require('undici') resolved from node_modules at runtime instead.
-  external: ['@ableton-extensions/sdk', 'undici'],
+  // Externalize ONLY the SDK — the Extension Host special-cases this exact
+  // specifier to inject its own native bridge. Everything else must be
+  // bundled: per the SDK's own packaging docs, "the Live Extension Host
+  // expects a standalone JavaScript file and will not resolve node_modules
+  // at runtime." (undici was externalized here briefly — that only appeared
+  // to work because `npm start` dev mode runs from the project directory
+  // with node_modules physically present; a packaged .ablx ships none, so
+  // require('undici') would have thrown "Cannot find module" for anyone who
+  // actually installed it normally instead of running the dev loop.)
+  external: ['@ableton-extensions/sdk'],
   // esbuild outputs CJS so import.meta.url is unavailable; inject a
   // synthetic value so fileURLToPath() resolves __dirname correctly.
   define: {
