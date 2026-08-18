@@ -260,9 +260,9 @@ export async function handleToolCall(
       }
 
       const track = findAudioTrack(song, trackIdArg);
-      const wavPath = await ctx.resources.renderPreFxAudio(track, startTime, endTime);
-      const wavBuffer = await fs.readFile(wavPath);
-      const result = await analyzeMonoCompatibility(wavBuffer);
+      const renderedPath = await ctx.resources.renderPreFxAudio(track, startTime, endTime);
+      const renderedBuffer = await fs.readFile(renderedPath);
+      const result = await analyzeMonoCompatibility(renderedBuffer);
       return { ok: true, track: track.name, startTime, endTime, ...result };
     }
 

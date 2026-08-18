@@ -1,10 +1,32 @@
-// Import the WAV-specific decoder directly rather than the auto-detecting
+// Import format-specific decoders directly rather than the auto-detecting
 // `audio-decode` dispatcher — that package dynamically imports every
 // supported codec (mp3, flac, opus, aac, wma, ...), and esbuild bundles all
-// of them since it can't know at build time only the `wav` branch ever
-// executes (that alone took the bundle from ~1.4MB to ~5.6MB). renderPreFxAudio
-// always produces a WAV file, so this is the only decoder this extension needs.
-import decode from '@audio/decode-wav';
+// of them since it can't know at build time which branch ever executes
+// (that alone took the bundle from ~1.4MB to ~5.6MB). renderPreFxAudio's
+// output format follows Live's "Record File Type" setting (WAV or AIFF per
+// the 1.0.0-beta.1 SDK docs), so these two dependency-free decoders cover
+// every case without pulling in the full dispatcher.
+import decodeWav from '@audio/decode-wav';
+import decodeAiff from '@audio/decode-aiff';
+
+/** Sniffs the RIFF/WAVE or FORM/AIFF(-C) magic bytes to pick a decoder. */
+function decodeRenderedAudio(buffer: Buffer): ReturnType<typeof decodeWav> {
+  const isRiffWave =
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WAVE';
+  if (isRiffWave) return decodeWav(buffer);
+
+  const isFormAiff =
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'FORM' &&
+    (buffer.toString('ascii', 8, 12) === 'AIFF' || buffer.toString('ascii', 8, 12) === 'AIFC');
+  if (isFormAiff) return decodeAiff(buffer);
+
+  throw new Error(
+    'Rendered audio is neither WAV nor AIFF — unrecognized format from renderPreFxAudio.',
+  );
+}
 
 /**
  * Mono-compatibility (stereo phase) analysis for a single track's audio.
@@ -71,11 +93,12 @@ function describeCorrelation(correlation: number): string {
 }
 
 /**
- * Decodes a rendered WAV buffer and correlates its left/right channels.
- * Mono input (or a render that collapsed to mono) has no phase to check.
+ * Decodes a rendered audio buffer (WAV or AIFF — depends on Live's Record
+ * File Type setting) and correlates its left/right channels. Mono input (or
+ * a render that collapsed to mono) has no phase to check.
  */
-export async function analyzeMonoCompatibility(wavBuffer: Buffer): Promise<MonoCompatibilityResult> {
-  const { channelData, sampleRate } = await decode(wavBuffer);
+export async function analyzeMonoCompatibility(renderedBuffer: Buffer): Promise<MonoCompatibilityResult> {
+  const { channelData, sampleRate } = decodeRenderedAudio(renderedBuffer);
   const channelCount = channelData.length;
   const durationSeconds = channelCount > 0 ? channelData[0]!.length / sampleRate : 0;
 
