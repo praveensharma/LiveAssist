@@ -20,16 +20,18 @@ await esbuild.build({
   logLevel: 'info',
   minify: production,
   sourcemap: !production,
-  // Externalize ONLY the SDK — the Extension Host special-cases this exact
-  // specifier to inject its own native bridge. Everything else must be
-  // bundled: per the SDK's own packaging docs, "the Live Extension Host
-  // expects a standalone JavaScript file and will not resolve node_modules
-  // at runtime." (undici was externalized here briefly — that only appeared
-  // to work because `npm start` dev mode runs from the project directory
-  // with node_modules physically present; a packaged .ablx ships none, so
-  // require('undici') would have thrown "Cannot find module" for anyone who
-  // actually installed it normally instead of running the dev loop.)
-  external: ['@ableton-extensions/sdk'],
+  // Bundle everything, including the SDK — the Extension Host does not
+  // special-case '@ableton-extensions/sdk' or inject its own implementation;
+  // it just does a normal Node require(). Externalizing it (as this build
+  // briefly did) throws "Cannot find module '@ableton-extensions/sdk'" at
+  // load time in a real install (no node_modules ships in the .ablx), which
+  // crashes the whole shared Extension Host process — not just this
+  // extension. Confirmed against ExtensionHost.txt and cross-checked against
+  // Grouper (same host, same SDK vendor package), which has no `external`
+  // array and loads fine. Per the SDK's own packaging docs, "the Live
+  // Extension Host expects a standalone JavaScript file and will not resolve
+  // node_modules at runtime" — that applies to every dependency, this one
+  // included.
   // esbuild outputs CJS so import.meta.url is unavailable; inject a
   // synthetic value so fileURLToPath() resolves __dirname correctly.
   define: {
