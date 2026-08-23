@@ -6,7 +6,7 @@
   "main": "dist/extension.js",
   "scripts": {
     "build": "tsc --noEmit && tsx build.ts --production",
-    "package": "npm run build && extensions-cli package -o dist/liveassist.ablx -i dist/ui",
+    "package": "npm run build && extensions-cli package -o dist/LiveAssist-0.1.0.ablx -i dist/ui",
     "prestart": "pkill -f ExtensionHostNodeModule.node || true",
     "start": "tsx build.ts && extensions-cli run",
     "typecheck": "tsc --noEmit",
@@ -32,6 +32,8 @@
     "@audio/decode-wav": "^1.4.3",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.3.0",
+    "abort-controller": "^3.0.0",
+    "event-target-shim": "^5.0.1",
     "lucide-react": "^1.17.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

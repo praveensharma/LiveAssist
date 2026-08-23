@@ -68,11 +68,11 @@ npm test
 ## Packaging / installing
 
 ```bash
-npm run package   # produces dist/liveassist.ablx
+npm run package   # produces dist/LiveAssist-0.1.0.ablx
 ```
 
 To install outside of dev mode: open Live's **Preferences/Settings → Extensions**, turn
-**Developer Mode off**, and drag `dist/liveassist.ablx` onto the "Drag and drop to
+**Developer Mode off**, and drag `dist/LiveAssist-0.1.0.ablx` onto the "Drag and drop to
 install" area (or use "Choose file"). Fully quit and relaunch Live afterward — extension
 activation happens at app launch, and leaving Developer Mode on will make the Extension
 Host wait indefinitely for a dev CLI connection instead of loading installed

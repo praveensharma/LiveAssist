@@ -61,13 +61,36 @@ build.ts is stale or was never accurate for this SDK release
 Grouper — worth checking if this changed between betas, but the safest fix
 doesn't depend on that).
 
-## Suggested fix (not applied — left for review)
+## SDK packaging fix (applied)
 
-Remove `external: ['@ableton-extensions/sdk']` from
-[build.ts:32](build.ts:32) so esbuild bundles it like every other
-dependency, then rebuild (`npm run package`) and reinstall. If there's a
-concrete reason the SDK must stay external for this project specifically
-(e.g. a documented native-bridge requirement in a newer SDK beta that
-Grouper's older vendored version doesn't exercise), that should be
-re-verified against actual host behavior before keeping this externalized —
-the current comment's claim doesn't match what the host logs show.
+`external: ['@ableton-extensions/sdk']` was removed from `build.ts`, so the
+SDK is now bundled with every other runtime dependency.
+
+## Restricted host globals (applied and verified 2026-08-23)
+
+Once the SDK was bundled, LiveAssist reached `activate()` and exposed a
+second compatibility problem. Ableton's Extension Host removes browser-style
+globals that `undici` expects during module initialization. Successive real
+host runs failed on `ReadableStream`, then `AbortSignal`, then `performance`.
+Because each exception escaped `activate()`, every failure still terminated
+the shared host with code 1.
+
+`src/node-polyfills.ts` now installs the required primitives before requiring
+`undici`: Web Streams, Blob/File, MessagePort, AbortController/AbortSignal,
+performance, Event/EventTarget, and DOMException. The regression test removes
+those globals to reproduce the constrained host before loading the Fetch API.
+
+The installed bundle was verified byte-for-byte against the rebuilt artifact.
+On the first corrected startup, `ExtensionHost.txt` recorded:
+
+```
+[LiveAssist] polyfill: undici required
+[LiveAssist] polyfill: done
+[LiveAssist] SDK context initialized
+[LiveAssist] Server listening on http://127.0.0.1:58426
+[LiveAssist] Ready — 55 tracks loaded
+```
+
+All six context-menu scopes registered, and no subsequent error or code-1
+exit was logged. This validates source tests, packaged artifact, installed
+artifact, and real Extension Host activation as separate layers.
